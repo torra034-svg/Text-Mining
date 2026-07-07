@@ -36,7 +36,7 @@ library(tidyverse) # pull strings
 #| warning: false
 #| echo: true  
 
-pdf_raw <- pdf_text("MN Child Welfare Framework for Competent Practice.pdf")
+pdf_raw <- pdf_text("MN Child Welfare Framework for Competent Practice.pdf.url")
 
 ```
 
@@ -132,9 +132,9 @@ comp_table_3 <- comp_table_2 %>%
   
 ```
 
-# Data Manipulation 
+# Data Manipulation
 
-* Now that we cleaned up the objectives, we'll add more columns to describe them such as the specific type of competency (e.g supervisor)
+-   Now that we cleaned up the objectives, we'll add more columns to describe them such as the specific type of competency (e.g supervisor)
 
 ```{r}
 #| label: competency-manipulation
@@ -142,7 +142,6 @@ comp_table_3 <- comp_table_2 %>%
 #| warning: false
 #| echo: true  
 ```
-
 
 # Text Mining Notes \[Learning Objectives Cleaning\]
 
@@ -166,7 +165,7 @@ A **lookbehind assertion** is a zero-width match that checks the text to the lef
 > ⚠️ **The Golden Rule:** Lookbehinds in R (`stringr`/`stringi`) **must have a fixed length**. You cannot use variable quantifiers like `*` or `+` inside them.
 
 | Type                    | Syntax         | Meaning                                | R Example Pattern                                  |
-|:-----------------|:-----------------|:-----------------|:-----------------|
+|:--------------|:--------------|:-----------------|:-----------------------|
 | **Positive Lookbehind** | `(?<=pattern)` | Match if `pattern` is on the left.     | `(?<=\\$)\\d+` (Extracts digits preceded by `$`)   |
 | **Negative Lookbehind** | `(?<!pattern)` | Match if `pattern` is NOT on the left. | `(?<!-)\\d+` (Extracts digits NOT preceded by `-`) |
 
@@ -192,7 +191,7 @@ In R, you must use a **double backslash** to escape special regex characters whe
 #### Anchors & Classes
 
 | Regex Component | What it Matches                           | Example                                   |
-|:-----------------------|:-----------------------|:-----------------------|
+|:----------------|:---------------------------|:---------------------------|
 | `^`             | Start of the string                       | `^\\d` (Starts with a digit)              |
 | `$`             | End of the string                         | `\\.$` (Ends with a period)               |
 | `\\d`           | Any digit (0-9)                           | `\\d{4}` (Exactly 4 digits)               |
