@@ -1,0 +1,203 @@
+---
+title: "MNCWTA Text Mining"
+author: "Patrick Torralba"
+format: 
+  html:
+    theme: flatly
+    fontsize: 0.8em
+    code-fold: FALSE
+    code-tools: TRUE
+    code-copy: TRUE
+    toc: TRUE
+    toc-depth: 4
+    smooth-scroll: TRUE
+    embed-resources: TRUE
+    fig-align: center
+editor: visual
+---
+
+# Library
+
+```{r}
+#| label: library
+#| message: false
+#| warning: false
+#| echo: true  
+
+library(pdftools) # to extract data from practice framework .pdf file
+library(tidyverse) # pull strings
+```
+
+# Import MN Practice Framework
+
+```{r}
+#| label: import
+#| message: false
+#| warning: false
+#| echo: true  
+
+pdf_raw <- pdf_text("MN Child Welfare Framework for Competent Practice.pdf")
+
+```
+
+# Data Cleaning
+
+This is the prompt I used in gemini to pull data:
+
+"how to extract text from tables in a .pdf document in R?"
+
+## Page Extraction and table conversion
+
+*Explanation*
+
+-   We first specify the pages we want
+-   then we tell R to split the strings based on the line break "\n"
+-   unlist() takes the list and gives us 1 singular column
+-   then we convert to a table
+-   and we also perform some minor data cleaning like remove the excess white space and blank rows
+
+```{r}
+#| label: page-extraction-cleaning
+#| message: false
+#| warning: false
+#| echo: true  
+
+# get competencies only
+comp_table <- pdf_raw[c(8:25)] %>% 
+  str_split("\n") %>% 
+  unlist() %>% 
+  as_tibble() %>% 
+  slice(-c(1:4)) %>% ## start at the 5th row since the first 4 rows are just fluff
+  mutate(value = str_trim(value)) %>% 
+  filter(!is.na(value),
+         value != "")
+
+
+```
+
+-   clean the raw text data by removing side paragraph
+
+This is essentially saying create a new column called "text" with the following logic: "\\s{2,}" if a row contans 2+ spaces then remove everything left up to the gap
+
+And we also trim the column at the end
+
+```{r}
+#| label: page-table-cleaning
+#| message: false
+#| warning: false
+#| echo: true  
+
+comp_table_2 <- comp_table %>% 
+  mutate(text = if_else(
+    condition = str_detect(value, "\\s{2,}"),
+    true = str_remove(value, "^.*?(?=\\s{2,})"),
+    false = value)) %>% 
+  mutate(text = str_trim(text))
+    
+
+```
+
+-   Now in this step, we take bind rows together. Namely, we bind the current and next row together until it hits a digit value.
+
+-   is_header is a column that checks if the row starts with a digit followed by a letter and a dot (e.g "1a.")
+
+-   then we create a unique group_id for each learning objective to track the text
+
+-   afterwards, we combine the columns using the summarize() and paste() functions
+
+-   lastly, we remove irrelevant words from the learning objectives. We do this by removing any character after the ")" character.
+
+```{r}
+#| label: competency-cleaning
+#| message: false
+#| warning: false
+#| echo: true  
+
+comp_table_3 <- comp_table_2 %>% 
+  select(text) %>% 
+  mutate(is_header = str_detect(text, "^\\d+[a-z]\\.")) %>% 
+  # Create a unique group ID that increments every time 'is_header' is TRUE
+  mutate(group_id = cumsum(is_header)) %>%
+  # Group by this new ID and collapse the text rows together
+  group_by(group_id) %>%
+  summarise(
+    combined_text = paste(text, collapse = " "),
+    .groups = "drop"
+  ) %>%
+  # Clean up by removing the temporary group_id column if you don't need it
+  select(-group_id) %>% 
+  mutate(clean_text = str_remove(combined_text, "(?<=[KS]\\)).*$")) %>%  ## See Text Mining Notes
+  select(clean_text)
+  
+  
+```
+
+# Data Manipulation 
+
+* Now that we cleaned up the objectives, we'll add more columns to describe them such as the specific type of competency (e.g supervisor)
+
+```{r}
+#| label: competency-manipulation
+#| message: false
+#| warning: false
+#| echo: true  
+```
+
+
+# Text Mining Notes \[Learning Objectives Cleaning\]
+
+-   str_detect(text, "\^\\d+\[a-z\]\\."): This looks at the beginning of the string (\^). It checks for one or more digits (\\d+), followed by a lowercase letter (\[a-z\]), followed by a literal period (\\.).
+-   cumsum(is_header): In R, TRUE equals 1 and FALSE equals 0. By taking the cumulative sum of the TRUE values, R creates a grouping variable that stays the same until it hits the next TRUE, where it bumps up by 1.
+-   paste(text, collapse = " "): Once grouped by that ID, paste(..., collapse = " ") stitches all the character strings in that group into a single string, separated by a space.
+-   Look-up regex cheat sheet to learn how to read this information.
+-   (?\<= ... ): This is a positive lookbehind. It tells R to look backward and ensure the pattern inside exists, without actually including it in the text that gets deleted.
+-   \[KS\] is a character class that means "either K or S".
+-   Match either "K)" or "S)", then grab everything after it
+-   .\*\$ then grabs everything from that point to the end of the line and removes it.
+
+## Regex Tips
+
+## 📝 Text Mining & Regex Cheat Sheet (R / `stringr`)
+
+### 1. Core Lookbehind Concepts
+
+A **lookbehind assertion** is a zero-width match that checks the text to the left *before* allowing a match, without including that text in the final result.
+
+> ⚠️ **The Golden Rule:** Lookbehinds in R (`stringr`/`stringi`) **must have a fixed length**. You cannot use variable quantifiers like `*` or `+` inside them.
+
+| Type                    | Syntax         | Meaning                                | R Example Pattern                                  |
+|:-----------------|:-----------------|:-----------------|:-----------------|
+| **Positive Lookbehind** | `(?<=pattern)` | Match if `pattern` is on the left.     | `(?<=\\$)\\d+` (Extracts digits preceded by `$`)   |
+| **Negative Lookbehind** | `(?<!pattern)` | Match if `pattern` is NOT on the left. | `(?<!-)\\d+` (Extracts digits NOT preceded by `-`) |
+
+------------------------------------------------------------------------
+
+### 2. Common `stringr` Functions
+
+Always stick to `stringr` functions for consistent `(string, pattern)` syntax.
+
+-   `str_detect(string, pattern)`: Returns `TRUE` / `FALSE`.
+-   `str_extract(string, pattern)`: Pulls out the *first* match.
+-   `str_remove(string, pattern)`: Deletes the matched pattern.
+-   `str_replace(string, pattern, replacement)`: Replaces the match.
+
+------------------------------------------------------------------------
+
+### 3. Regex Syntax Building Blocks
+
+#### The Double Backslash (`\\`)
+
+In R, you must use a **double backslash** to escape special regex characters when you want to match them literally. \* Literal Period: `\\.` \* Literal Parentheses: `\\(` or `\\)` \* Literal Question Mark: `\\?`
+
+#### Anchors & Classes
+
+| Regex Component | What it Matches                           | Example                                   |
+|:-----------------------|:-----------------------|:-----------------------|
+| `^`             | Start of the string                       | `^\\d` (Starts with a digit)              |
+| `$`             | End of the string                         | `\\.$` (Ends with a period)               |
+| `\\d`           | Any digit (0-9)                           | `\\d{4}` (Exactly 4 digits)               |
+| `\\w`           | Any word character (letters/numbers)      | `\\w+` (One or more characters)           |
+| `\\s`           | Any whitespace (space, tab, newline)      | `\\s+` (One or more spaces)               |
+| `.*`            | Anything (Any character, 0 or more times) | `\\).*$` (Everything after a parenthesis) |
+
+------------------------------------------------------------------------
