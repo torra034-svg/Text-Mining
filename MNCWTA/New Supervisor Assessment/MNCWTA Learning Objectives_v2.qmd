@@ -1,0 +1,136 @@
+---
+title: "New Supervisor Learning Objectives Merge"
+format: 
+  html:
+    theme: flatly
+    fontsize: 0.8em
+    code-fold: FALSE
+    code-tools: TRUE
+    code-copy: TRUE
+    toc: TRUE
+    toc-depth: 4
+    smooth-scroll: TRUE
+    embed-resources: TRUE
+    fig-align: center
+editor: visual
+---
+
+Note: This is the improved version that contains the missing learning objectives in the first iteration of this .qmd file.
+
+# library
+
+```{r}
+#| label: library
+#| message: false
+#| warning: false
+#| echo: true  
+
+library(tidyverse)
+library(readxl)
+```
+
+# import data
+
+```{r}
+#| label: import
+#| message: false
+#| warning: false
+#| echo: true  
+
+learn_obj <- read_excel("New Supervisor Learning Objectives.xlsx")
+comp_2 <- read_csv("Competency_Table_v2.csv")
+
+```
+
+# Data Cleaning
+
+## Competency
+
+-   We only want to extract New Supervisor information
+
+```{r}
+#| label: clean-competency
+#| message: false
+#| warning: false
+#| echo: true  
+
+comp_2 <- comp_2 %>% 
+  filter(!is.na(`Supervisor Competency`)) %>% 
+  select(`Competency Code`, `Competency Description`, Competencies, `Knowledge / Skill Statement`)
+```
+
+## Competency Code
+
+-   In this step, we split the competency codes
+    -   This is necessary for merging on a later step
+
+```{r}
+#| label: learn-obj-split
+#| message: false
+#| warning: false
+#| echo: true  
+
+learn_obj_2 <- learn_obj %>% 
+  mutate(comp_code_org = learn_obj$`Competency Code`) %>% 
+  separate_wider_delim(
+    cols = `Competency Code`,
+    delim = ",",
+    names_sep = "Column",
+    too_few = "align_start"
+  )
+
+```
+
+### Merge
+
+-   I merge the competency codes to the competency codes present in the learning objectives
+
+```{r}
+#| label: learn-obj-merge
+#| message: false
+#| warning: false
+#| echo: true  
+
+library(dplyr)
+library(tidyr)
+
+
+learn_obj_3 <- learn_obj_2 %>%
+  # 1. Temporarily pivot columns 1 to 13 into a single long column
+  pivot_longer(
+    cols = starts_with("Competency CodeColumn"),
+    names_to = "Original_Column",
+    values_to = "Competency Code"
+  ) %>%
+  mutate("Competency Code" = str_trim(`Competency Code`, "both")) %>% 
+  # 2. Do the single, clean join
+  left_join(
+    comp_2, 
+    by = "Competency Code"
+  ) %>%
+  # 3. Pivot it back to the original wide format
+  pivot_wider(
+    names_from = Original_Column,
+    values_from = c(`Competency Code`, `Competency Description`),
+    names_glue = "{.value}_{Original_Column}"
+  ) %>% 
+  select(-starts_with("Competency Code_"))
+  
+
+```
+
+
+#### Merge Cleaning
+
+-   There are duplicate learning objectives due to varying competencies
+  - Thus, I set up a group_id column and then bind similar rows
+  
+```{r}
+#| label: bind-competency-row
+#| message: false
+#| warning: false
+#| echo: true  
+
+
+```
+
