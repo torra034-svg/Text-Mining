@@ -1,0 +1,80 @@
+---
+title: "FFAR Project Text Mining - Import Trial"
+author: "Patrick Torralba"
+format: 
+  html:
+    theme: flatly
+    fontsize: 0.8em
+    code-fold: FALSE
+    code-tools: TRUE
+    code-copy: TRUE
+    toc: TRUE
+    toc-depth: 4
+    smooth-scroll: TRUE
+    embed-resources: TRUE
+    fig-align: center
+editor: visual
+---
+
+This import trial is needed bc it will guide how I create the for-loop.
+
+Thus, I will only import 1 .pdf.
+
+# Library
+```{r}
+#| label: library
+#| message: FALSE
+#| warning: FALSE
+#| echo: TRUE 
+
+library(tidyverse) #clean data
+library(pdftools)
+```
+
+
+# Import data
+```{r}
+#| label: import
+#| message: FALSE
+#| warning: FALSE
+#| echo: TRUE  
+
+report_1 <- pdf_text("Old Format Reports/22-000285_Final Report1.pdf")
+```
+
+# Clean data
+
+## Data Transformation
+
+Convert from pdf to table
+
+```{r}
+#| label: pdf-to-table
+#| message: FALSE
+#| warning: FALSE
+#| echo: TRUE  
+
+report_1_v2 <- report_1 |> 
+  str_split("\n") |> ## create rows based on the identations, spaces, and tabs
+  unlist() |> ## need to do this as necessary step. idk why
+  as_tibble()
+
+```
+
+## Indicator Extractor
+
+Due to the formatting of the FFAR impact report, I need to extract information *before* and *after* the general information section
+
+### Pre-General Information Extraction
+
+This section refers to all information occurring before the numbered questions.
+
+```{r}
+#| label: pre-gen-info
+#| message: FALSE
+#| warning: FALSE
+#| echo: TRUE  
+
+
+```
+
