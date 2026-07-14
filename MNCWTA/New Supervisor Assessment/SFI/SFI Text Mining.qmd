@@ -123,8 +123,8 @@ SFI_4 <- SFI_3 |>
     combined_text == "& Budgeting implemented in the community or in the agency" ~ "implemented in the community or in the agency",
     combined_text == "Controllingthat assignment are completed on time" ~ "Controlling that assignment are completed on time",
     combined_text == "Quality Control Regulating workers' case loads" ~ "Regulating workers' case loads",
-    combined_text == "Contacts Finding or recruiting volunteers with Community Referrals to, and coordination or supervision" ~ "Finding or recruiting volunteers with Community Referrals to, and coordination or supervision",
-    combined_text == "Services of private-service providers" ~ "of private-service providers",
+    combined_text == "Contacts Finding or recruiting volunteers with Community Referrals to, and coordination or supervision" ~ "Finding or recruiting volunteers",
+    combined_text == "Services of private-service providers" ~ "Referrals to, and coordination or supervision of private-service providers",
     combined_text == "Professional Discussing assessment of clients with workers" ~ "Discussing assessment of clients with workers",
     combined_text == "Skills & Discussing intervention plans with workers" ~ "Discussing intervention plans with workers",
     combined_text == "Techniques Discussing intervention methods with workers (i.e., casework, group-work)" ~ "Discussing intervention methods with workers (i.e., casework, group-work)",
@@ -133,9 +133,8 @@ SFI_4 <- SFI_3 |>
     combined_text == "Information relations with interdisciplinary teams" ~ "relations with interdisciplinary teams",
     combined_text == "Referringworkers to information resources in the field/wmmunity (e.g., experts, reports)" ~ "Referring workers to information resources in the field/wmmunity (e.g., experts, reports)",
     combined_text == "Assisting workers in handling tensions and" ~ "Assisting workers in handling tensions and frustrations relating to their work in general",
-    combined_text == "Finding or recruiting volunteers with Community Referrals to, and coordination or supervision" ~ "Finding or recruiting volunteers",
-    combined_text == "of private-service providers" ~ "Referrals to, and coordination or supervision",
-      .default = combined_text)) |> 
+    combined_text == "Staffing (including intewiews or submission of assessments of candidates)" ~ "Staffing (including interviews or submission of assessments of candidates)",
+    .default = combined_text)) |> 
   select(combined_text_2)
   
   
@@ -167,15 +166,29 @@ Almost done. Now I'm going to clean-up the remaining dirty rows by removing any 
 #| echo: TRUE  
 
 SFI_6 <- SFI_5 |> 
-  mutate(SFI_clean_2 = str_remove(SFI_clean, "\\.\\d+")) |> ## this removes the decimal point and all digits following it
-  select(SFI_clean_2)
+  mutate(SFI_clean_2 = str_remove(SFI_clean, "\\.\\d+")) |>  ## this removes the decimal point and all digits following it
+  select(-SFI_clean)
 
 ```
 
-# Text Mining Notes
-* \\. finds the literal decimal point.
+Wait jk jk. Now I'm going to add another column describing the exact Kadushin component based on the article
 
-* ".*" finds absolutely any character (.) that comes after it, any number of times (*), effectively clearing out the rest of the string.
+```{r}
+#| label: SFI-Kadushin-column
+#| message: FALSE
+#| warning: FALSE
+#| echo: TRUE  
+
+SFI_7 <- SFI_6 |> 
+  mutate(kadushin = case_when(
+    group_id >= 1 & group_id <= 20 ~ "Administrative",
+    group_id >= 21 & group_id <= 36 ~ "Educational",
+    .default = "Supportive")
+  ) |> 
+  select(-group_id)
+
+```
+
 
 # Export
 Done! Now I'm going to export the finished product as a .csv to work on it 
@@ -186,7 +199,14 @@ Done! Now I'm going to export the finished product as a .csv to work on it
 #| warning: FALSE
 #| echo: TRUE  
 
-write.csv(SFI_6, "SFI_clean.csv")
+write.csv(SFI_7, "SFI_clean.csv")
 
 ```
+
+
+
+# Text Mining Notes
+* \\. finds the literal decimal point.
+
+* ".*" finds absolutely any character (.) that comes after it, any number of times (*), effectively clearing out the rest of the string.
 
