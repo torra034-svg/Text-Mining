@@ -39,6 +39,9 @@ library(tidyverse)
 learn_obj <- read_csv("Imports/New Supervisor Learning Objectives_v2 - Original_hide.csv") |> 
   select(`Learning Objective`)
 
+learn_obj_orig <- read_csv("Imports/New Supervisor Learning Objectives_v2 - Original_hide.csv") |> 
+  select(-"Competency Code", -"Assessment Type")
+
 comp_2 <- read_csv("Exports/Competency_Table_v2.csv")
 
 ```
@@ -178,7 +181,6 @@ learn_obj_5 <- learn_obj_4 |>
 
 ```
 
-
 #### Remove ; values from comp_code_all
 
 ```{r}
@@ -203,7 +205,6 @@ learn_obj_6 <- learn_obj_5 |>
 
 
 ```
-
 
 # Merge knowledge and skills to each comp_code
 
@@ -247,6 +248,8 @@ learn_obj_k_s2 <- learn_obj_k_s |>
 
 # Final Product: Learning Objective with competencies and knowledge / skill statement
 
+Also make sure to merge in original columns that I need
+
 ```{r}
 #| label: learn-obj-final
 #| message: FALSE
@@ -255,9 +258,25 @@ learn_obj_k_s2 <- learn_obj_k_s |>
 
 
 learn_obj_fp <- learn_obj_6 |> 
-  left_join(learn_obj_k_s2, by = c("Learning Objective"))
+  left_join(learn_obj_k_s2, by = c("Learning Objective")) |> 
+  left_join(learn_obj_orig, by = c("Learning Objective"))
 
 ```
+
+And make sure to rename columns for professionalism
+
+```{r}
+#| label: professionalism
+#| message: FALSE
+#| warning: FALSE
+#| echo: TRUE  
+
+learn_obj_fp2 <- learn_obj_fp |> 
+  rename("Competency Code" = comp_code_all2,
+         "Knowledge / Skills Statement" = ks2)
+
+```
+
 
 ## Export final product
 
@@ -267,6 +286,5 @@ learn_obj_fp <- learn_obj_6 |>
 #| warning: FALSE
 #| echo: TRUE  
 
-write_csv(learn_obj_fp, "Exports/learn_obj_facilitator_guide.csv")
+write_csv(learn_obj_fp2, "Exports/learn_obj_facilitator_guide.csv")
 ```
-
