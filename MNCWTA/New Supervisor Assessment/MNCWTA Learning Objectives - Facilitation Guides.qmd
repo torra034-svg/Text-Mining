@@ -114,10 +114,6 @@ learn_obj_2 <- learn_obj_2 |>
 #| warning: false
 #| echo: true  
 
-library(dplyr)
-library(tidyr)
-
-
 learn_obj_3 <- learn_obj_2 |>
   # 1. Temporarily pivot columns 1 to 13 into a single long column
   pivot_longer(
@@ -125,7 +121,7 @@ learn_obj_3 <- learn_obj_2 |>
     names_to = "Original_Column",
     values_to = "Competency Code"
   ) |>
-  mutate("Competency Code" = str_trim(`Competency Code`, "both")) |> 
+  mutate(`Competency Code` = str_trim(`Competency Code`, "both")) |> 
   # 2. Do the single, clean join
   left_join(
     comp_2, 
@@ -137,8 +133,8 @@ learn_obj_3 <- learn_obj_2 |>
     values_from = c(`Competency Code`, `Competency Description`),
     names_glue = "{.value}_{Original_Column}"
   ) |> 
-  select(-starts_with("Competency Code_"))
-
+  select(-starts_with("Competency Code_")) |> 
+  mutate(across(everything(), ~ replace_na(.x, "")))
 
 ```
 
@@ -175,6 +171,102 @@ learn_obj_4 <- learn_obj_3 |>
 
 learn_obj_5 <- learn_obj_4 |> 
   unite(
-    col = contains()
-  )
+    col = "comp_code_all",
+    contains("comp_code"),
+    sep = "; ",
+    na.rm = TRUE)
+
 ```
+
+
+#### Remove ; values from comp_code_all
+
+```{r}
+#| label: remove-na
+#| message: FALSE
+#| warning: FALSE
+#| echo: TRUE  
+
+learn_obj_6 <- learn_obj_5 |> 
+  mutate(
+    comp_code_all2 = comp_code_all |> 
+      # 1. Replace any sequence of semicolons and spaces at the VERY END of the text
+      str_remove_all("(;\\s*)+$") |> 
+      # 2. Replace any sequence of semicolons and spaces at the VERY START of the text
+      str_remove_all("^(;\\s*)+") |> 
+      # 3. Clean up double/multiple semicolons in the middle into a single "; "
+      str_replace_all(";(\\s*;)+", ";") |> 
+      # 4. Trim leftover extra white spaces
+      str_squish()
+  ) |> 
+  select(`Learning Objective`, comp_code_all2)
+
+
+```
+
+
+# Merge knowledge and skills to each comp_code
+
+```{r}
+#| label: add-k-s
+#| message: FALSE
+#| warning: FALSE
+#| echo: TRUE  
+
+learn_obj_k_s <- learn_obj_2 |> 
+  # 1. Temporarily pivot columns 1 to 13 into a single long column
+  pivot_longer(
+    cols = starts_with("comp_code"),
+    names_to = "Original_Column",
+    values_to = "Competency Code"
+  ) |>
+  mutate("Competency Code" = str_squish(`Competency Code`)) |> 
+  # 2. Do the single, clean join
+  left_join(
+    comp_2, 
+    by = "Competency Code"
+  ) |> 
+  select(`Learning Objective`, `Knowledge / Skill Statement`)
+```
+
+## Create group ID and summarize learning objectives based on knowledge and skills
+
+```{r}
+#| label: learn_obj_ks-group
+#| message: FALSE
+#| warning: FALSE
+#| echo: TRUE  
+
+
+learn_obj_k_s2 <- learn_obj_k_s |> 
+  group_by(`Learning Objective`) |> 
+  summarize(ks = paste(na.omit(`Knowledge / Skill Statement`), collapse = "; ")) |> 
+  mutate(ks2 = str_squish(ks)) |> 
+  select(`Learning Objective`, ks2)
+```
+
+# Final Product: Learning Objective with competencies and knowledge / skill statement
+
+```{r}
+#| label: learn-obj-final
+#| message: FALSE
+#| warning: FALSE
+#| echo: TRUE  
+
+
+learn_obj_fp <- learn_obj_6 |> 
+  left_join(learn_obj_k_s2, by = c("Learning Objective"))
+
+```
+
+## Export final product
+
+```{r}
+#| label: export-fp
+#| message: FALSE
+#| warning: FALSE
+#| echo: TRUE  
+
+write_csv(learn_obj_fp, "Exports/learn_obj_facilitator_guide.csv")
+```
+
